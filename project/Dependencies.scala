@@ -34,7 +34,7 @@ object Dependencies {
     val hadoop = "org.apache.hadoop" % "hadoop-client-runtime" % "3.3.6"
     val spark3Sql = ("org.apache.spark" %% "spark-sql" % spark3Version).cross(CrossVersion.for3Use2_13)
     val spark4Sql = ("org.apache.spark" %% "spark-sql" % spark4Version).cross(CrossVersion.for3Use2_13)
-    val scalameta = "org.scalameta" %% "scalameta" % "4.17.3"
+    val scalameta = "org.scalameta" %% "scalameta" % "4.17.4"
     val gcsConnector = ("com.google.cloud.bigdataoss" % "gcs-connector" % "hadoop3-2.2.33")
   }
 
