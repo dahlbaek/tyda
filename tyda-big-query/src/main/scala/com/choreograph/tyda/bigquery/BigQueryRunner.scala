@@ -1,5 +1,7 @@
 package com.choreograph.tyda.bigquery
 
+import java.net.URI
+
 import scala.annotation.unused
 import scala.jdk.CollectionConverters.*
 
@@ -14,6 +16,8 @@ import com.google.cloud.bigquery.JobStatistics.QueryStatistics
 import com.google.cloud.bigquery.QueryJobConfiguration
 import com.google.cloud.bigquery.TableDefinition
 import com.google.cloud.bigquery.TableId
+import com.google.cloud.storage.Storage
+import com.google.cloud.storage.StorageOptions
 import org.slf4j.LoggerFactory
 
 import com.choreograph.tyda.Codec
@@ -21,6 +25,7 @@ import com.choreograph.tyda.Dataset
 import com.choreograph.tyda.Runner
 import com.choreograph.tyda.RunnerArgs
 import com.choreograph.tyda.RunnerArgs.ValidateSchema
+import com.choreograph.tyda.WriteMode
 import com.choreograph.tyda.bigquery.BigQueryRunner.buildClient
 import com.choreograph.tyda.sql.RenderedMultiStatement
 import com.choreograph.tyda.sql.SqlDialect
@@ -36,8 +41,42 @@ class BigQueryRunner(args: RunnerArgs.BigQuery) extends Runner {
       case Left(err) => throw new RuntimeException(s"Failed to unparse dataset to SQL: $err")
     }
 
-  def execute(ds: Dataset.Action): Unit = {
-    validateReadTableSchemas(ds, args.validateSchemas)
+  private lazy val storage = StorageOptions.newBuilder().setProjectId(args.projectId).build().getService
+
+  /** EXPORT DATA with `overwrite=true` only replaces files with the same name
+    * and never deletes stale files, so we wipe the prefix ourselves and then
+    * export as a regular ErrorIfExists write.
+    */
+  private def prepareWrite(action: Dataset.Action): Dataset.Action =
+    action match {
+      case Dataset.Action.Write(path = path, mode = WriteMode.Overwrite) =>
+        deleteGcsPrefix(path)
+        asExport(action)
+      case Dataset.Action.Write(mode = WriteMode.ErrorIfExists) => action
+    }
+
+  private def asExport(action: Dataset.Action): Dataset.Action =
+    action match { case write: Dataset.Action.Write[?] => write.copy(mode = WriteMode.ErrorIfExists) }
+
+  private def deleteGcsPrefix(path: String): Unit = {
+    val uri = URI(path)
+    require(uri.getScheme == "gs", s"BigQuery can only overwrite gs:// paths, got '$path'")
+    val bucket = uri.getHost
+    val prefix = uri.getPath.stripPrefix("/")
+    require(prefix.nonEmpty, s"Refusing to overwrite the root of bucket '$bucket'")
+    logger.info(s"Deleting existing objects under $path")
+    storage
+      .list(bucket, Storage.BlobListOption.prefix(prefix))
+      .iterateAll()
+      .asScala
+      .map(_.getBlobId)
+      .grouped(100)
+      .foreach(ids => storage.delete(ids.asJava): Unit)
+  }
+
+  def execute(action: Dataset.Action): Unit = {
+    validateReadTableSchemas(action, args.validateSchemas)
+    val ds = prepareWrite(action)
     // Do we need error handling here, or will those always result in exceptions?
     try
       sql(ds).executeSingle { queryStr =>
@@ -62,7 +101,7 @@ class BigQueryRunner(args: RunnerArgs.BigQuery) extends Runner {
   }
 
   def explain[T](ds: Dataset[T]): String = explainImpl(BigQueryCollectionRewrites.rewrite(ds))
-  def explain(action: Dataset.Action): String = explainImpl(action)
+  def explain(action: Dataset.Action): String = explainImpl(asExport(action))
 
   /** Provides a human-readable explanation of the execution plan for the given
     * dataset.

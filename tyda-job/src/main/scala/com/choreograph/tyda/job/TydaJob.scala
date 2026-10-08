@@ -5,13 +5,20 @@ import org.slf4j.LoggerFactory
 import com.choreograph.tyda.BuildInfo
 import com.choreograph.tyda.Dataset
 import com.choreograph.tyda.RunnerArgs
+import com.choreograph.tyda.WriteMode
 import com.choreograph.tyda.table.ArgsParser
 import com.choreograph.tyda.table.Partitioner
 import com.choreograph.tyda.table.Partitioner.Creator
 import com.choreograph.tyda.table.Sink
 import com.choreograph.tyda.table.SourceSinkTraversal
 
-final case class TydaJobArgs(runner: RunnerArgs) derives ArgsParser
+/** @param writeMode
+  *   How sink writes behave when the destination already exists. This is runner
+  *   independent so that a job behaves the same regardless of which engine
+  *   executes it.
+  */
+final case class TydaJobArgs(runner: RunnerArgs, writeMode: WriteMode = WriteMode.ErrorIfExists)
+    derives ArgsParser
 object TydaJobArgs {
   /* Currently we can not define this on RunnerArgs as ArgsParser is defined in tyda-table and runner args in
    * tyda. */

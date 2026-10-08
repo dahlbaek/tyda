@@ -24,6 +24,7 @@ import com.choreograph.tyda.Format
 import com.choreograph.tyda.HivePartitionParser
 import com.choreograph.tyda.Ord
 import com.choreograph.tyda.Timestamp
+import com.choreograph.tyda.WriteMode
 import com.choreograph.tyda.iterator.AggregateExprEvaluation.aggregator
 import com.choreograph.tyda.iterator.ExprEvaluation.lambda
 import com.choreograph.tyda.json.CodecToJsoniter
@@ -35,9 +36,18 @@ import com.choreograph.tyda.unreachable
 object DatasetOnIterator {
   def perform[T](ds: Dataset.Action): Unit =
     ds match {
-      case Dataset.Action.Write(input, path, Format.Parquet) => writeParquetToPath(input, path, input.codec)
-      case Dataset.Action.Write(input, path, Format.Json) => writeJsonToPath(input, path, input.codec)
+      case Dataset.Action.Write(input, path, format, mode) =>
+        if mode == WriteMode.Overwrite then deletePath(path)
+        format match {
+          case Format.Parquet => writeParquetToPath(input, path, input.codec)
+          case Format.Json => writeJsonToPath(input, path, input.codec)
+        }
     }
+
+  private def deletePath(path: String): Unit = {
+    val hadoopPath = new Path(path)
+    hadoopPath.getFileSystem(new Configuration()).delete(hadoopPath, true): Unit
+  }
 
   def apply[T](ds: Dataset[T]): Iterator[T] =
     ds match {

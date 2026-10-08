@@ -558,11 +558,15 @@ sealed trait Dataset[T: Codec] {
 
   /** Write a Dataset to path using the specified format.
     *
+    * By default the write fails if the path already exists. Use
+    * [[WriteMode.Overwrite]] to delete any existing data under the path before
+    * writing.
+    *
     * Note: This is a lazy operation and the returned [[Dataset.Action]] needs
     * to be passed to a runner for the data to be written.
     */
-  def writeToPath(path: String, format: Format): Action =
-    Action.Write(this, if path.endsWith("/") then path else path + "/", format)
+  def writeToPath(path: String, format: Format, mode: WriteMode = WriteMode.ErrorIfExists): Action =
+    Action.Write(this, if path.endsWith("/") then path else path + "/", format, mode)
 
   /** Returns an expression that evaluates to true if the dataset contains at
     * least one row, false otherwise. This can be used in subquery expressions.
@@ -588,7 +592,7 @@ sealed trait Dataset[T: Codec] {
 object Dataset {
   sealed trait Action
   private[tyda] object Action {
-    final case class Write[T](input: Dataset[T], path: String, format: Format) extends Action
+    final case class Write[T](input: Dataset[T], path: String, format: Format, mode: WriteMode) extends Action
 
     private val datasetApi = {
       import ExprNode.DatasetLeafs.given

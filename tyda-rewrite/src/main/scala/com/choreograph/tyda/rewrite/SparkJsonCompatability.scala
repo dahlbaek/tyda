@@ -84,8 +84,8 @@ object SparkJsonCompatability {
   object ConvertWrites extends ActionRule {
     def unapply(action: Dataset.Action): Option[Dataset.Action] =
       action match {
-        case Dataset.Action.Write(input, path, Format.Json) => writeConverter(input.codec).map { cast =>
-            Dataset.Action.Write(input.select(cast.cast), path, Format.Json)
+        case Dataset.Action.Write(input, path, Format.Json, mode) => writeConverter(input.codec).map { cast =>
+            Dataset.Action.Write(input.select(cast.cast), path, Format.Json, mode)
           }
         case _ => None
       }

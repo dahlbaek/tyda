@@ -25,6 +25,7 @@ import com.choreograph.tyda.PartitionEncoding.encode
 import com.choreograph.tyda.Runner
 import com.choreograph.tyda.Timestamp
 import com.choreograph.tyda.TypeName
+import com.choreograph.tyda.WriteMode
 
 object DatasetReadWriteSuite {
   final case class TmpPath(path: String, cleanup: () => Unit)
@@ -104,6 +105,7 @@ trait DatasetReadWriteSuite extends DatasetSuite {
   def format: Format
   def includeReadTests: Boolean = true
   def includeOverwriteTests: Boolean = true
+  def includeWriteModeOverwriteTests: Boolean = includeOverwriteTests
 
   private def checkSame[T](read: Seq[T], expected: Seq[T])(using aggregating: Aggregating[Seq[T]]): Result = {
     val containsSameElements = aggregating.containsTheSameElementsAs(read, expected)
@@ -240,6 +242,24 @@ trait DatasetReadWriteSuite extends DatasetSuite {
             )}"
         )
       }: Unit
+    }
+  }
+
+  test("write with WriteMode.Overwrite replaces existing data") {
+    if includeWriteModeOverwriteTests then {
+      Using.resource(TmpPath(tmpDir, cleanupPath)) { tmpPath =>
+        val path = tmpPath.path
+        /* The first write is larger so that runners producing multiple files would leave stale files behind
+         * if they only overwrote files instead of wiping the path. */
+        val oldValues = Vector.fill(200)(Arbitrary[Int]())
+        val newValues = Vector.fill(10)(Arbitrary[Int]())
+
+        implementation.execute(Dataset.from(oldValues).writeToPath(path, format, WriteMode.Overwrite))
+        implementation.execute(Dataset.from(newValues).writeToPath(path, format, WriteMode.Overwrite))
+
+        val readDs = Dataset.read[Int](path, format, unpivot = false, filenameGlobFilter = pattern(format))
+        checkSame(reference.collect(readDs), newValues).check
+      }
     }
   }
 

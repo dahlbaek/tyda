@@ -517,6 +517,7 @@ private object ExprNode extends ExprApi[ExprNode] {
     given [T]: TreeApi[Dataset.Read[T], N] = TreeApi.leaf
     given TreeApi[Boolean, N] = TreeApi.leaf
     given TreeApi[Format, N] = TreeApi.leaf
+    given TreeApi[WriteMode, N] = TreeApi.leaf
     given TreeApi[TableLocation, N] = TreeApi.leaf
   }
 

@@ -7,14 +7,15 @@ import scala.collection.mutable
 import com.choreograph.tyda.Dataset
 import com.choreograph.tyda.Runner
 import com.choreograph.tyda.RunnerArgs
+import com.choreograph.tyda.WriteMode
 import com.choreograph.tyda.table.Partitioner
 import com.choreograph.tyda.table.Sink
 import com.choreograph.tyda.table.Source
 
-class TydaJobContext(private val runner: Runner) {
+class TydaJobContext(private val runner: Runner, writeMode: WriteMode = WriteMode.ErrorIfExists) {
   import TydaJobContext.Write
 
-  def this(args: TydaJobArgs, name: String) = this(RunnerArgs.createRunner(args.runner, name))
+  def this(args: TydaJobArgs, name: String) = this(RunnerArgs.createRunner(args.runner, name), args.writeMode)
 
   private val writes = mutable.Queue.empty[Write[?, ?]]
 
@@ -51,7 +52,7 @@ class TydaJobContext(private val runner: Runner) {
     writes.foreach { case Write(dataset, sink, partitioner) =>
       sink match {
         case Sink.Path(basePath, format) =>
-          val write = dataset.writeToPath(partitioner.path(basePath), format)
+          val write = dataset.writeToPath(partitioner.path(basePath), format, writeMode)
           runner.execute(write)
         case Sink.Test(verifiers) =>
           val verify = verifiers.getVerifier(partitioner)

@@ -14,6 +14,7 @@ import org.apache.spark.sql.Column
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.DataFrameReader
 import org.apache.spark.sql.Dataset as SparkDataset
+import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.count
 import org.apache.spark.sql.functions.explode
@@ -40,6 +41,7 @@ import com.choreograph.tyda.HivePartitionParser
 import com.choreograph.tyda.TableLocation
 import com.choreograph.tyda.TreeApi.Continue
 import com.choreograph.tyda.TreeApi.Skip
+import com.choreograph.tyda.WriteMode
 import com.choreograph.tyda.functions.some
 import com.choreograph.tyda.rewrite.ExplodeOptionToFilter
 import com.choreograph.tyda.rewrite.ReplacementMap
@@ -128,11 +130,21 @@ object DatasetOnSpark {
   private val unpersistTasks = Collections.newSetFromMap[UnpersistTask](ConcurrentHashMap())
 
   def perform(action: Dataset.Action)(using spark: SparkSession): Unit =
-    def write[T](ds: SparkDataset[T], format: Format, path: String): Unit =
-      ds.write.format(format.toString.toLowerCase).options(formatOptions(format)).save(path)
+    def write[T](ds: SparkDataset[T], format: Format, path: String, mode: WriteMode): Unit =
+      ds.write
+        .mode(toSaveMode(mode))
+        .format(format.toString.toLowerCase)
+        .options(formatOptions(format))
+        .save(path)
     action match {
       case SparkJsonCompatability.ConvertWrites(converted) => perform(converted)
-      case Dataset.Action.Write(input, path, format) => write(DatasetOnSpark(input), format, path)
+      case Dataset.Action.Write(input, path, format, mode) => write(DatasetOnSpark(input), format, path, mode)
+    }
+
+  private def toSaveMode(mode: WriteMode): SaveMode =
+    mode match {
+      case WriteMode.ErrorIfExists => SaveMode.ErrorIfExists
+      case WriteMode.Overwrite => SaveMode.Overwrite
     }
 
   def apply[T](ds: Dataset[T])(using spark: SparkSession): SparkDataset[T] = {

@@ -15,7 +15,7 @@ class SparkRunner(using spark: SparkSession) extends Runner {
   def explain[T](ds: Dataset[T]): String = DatasetOnSpark(ds).queryExecution.explainString(ExtendedMode)
   def explain(action: Dataset.Action): String =
     action match {
-      case Dataset.Action.Write(input, path, format) => "Write to {path} in format {format}:\n" +
+      case Dataset.Action.Write(input, path, format, mode) => s"Write to $path in format $format ($mode):\n" +
           explain(input)
     }
 }

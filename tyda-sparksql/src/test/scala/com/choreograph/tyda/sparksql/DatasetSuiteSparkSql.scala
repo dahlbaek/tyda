@@ -85,12 +85,16 @@ class DatasetJoinSuiteSparkSql extends DatasetJoinSuite, SparkSuiteRunner
 class DatasetAggregatesSuiteSparkSql extends DatasetAggregatesSuite, SparkSuiteRunner
 class DatasetSubquerySuiteSparkSql extends DatasetSubquerySuite, SparkSuiteRunner
 class DatasetOrderBySuiteSparkSql extends DatasetOrderBySuite, SparkSuiteRunner
+/* Writes are rendered as CREATE TABLE statements, which can not be repeated for the same path, and SQL can
+ * not express wiping a path. */
 class DatasetReadWriteParquetSuiteSparkSql extends DatasetReadWriteSuite, SparkSuiteRunner {
   override def includeReadTests: Boolean = false
+  override def includeWriteModeOverwriteTests: Boolean = false
   override def format = Format.Parquet
 }
 class DatasetReadWriteJsonSuiteSparkSql extends DatasetReadWriteSuite, SparkSuiteRunner {
   override def includeReadTests: Boolean = false
+  override def includeWriteModeOverwriteTests: Boolean = false
   override def format = Format.Json
 }
 

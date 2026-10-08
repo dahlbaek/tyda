@@ -7,6 +7,7 @@ import scala.annotation.targetName
 import com.choreograph.tyda.Codec
 import com.choreograph.tyda.Dataset
 import com.choreograph.tyda.NonEmpty
+import com.choreograph.tyda.WriteMode
 import com.choreograph.tyda.rewrite.Except
 import com.choreograph.tyda.rewrite.ExplodeOptionToFilter
 import com.choreograph.tyda.sql.ast.Query
@@ -61,7 +62,10 @@ def toSql(action: Dataset.Action, dialect: SqlDialect): Result[RenderedMultiStat
   val args = UnparserArgs(dialect, AliasGenerator.Default())
   val transformedAction = dialect.correctnessRules.transform(action)
   transformedAction match {
-    case Dataset.Action.Write(input, path, format) => unparseDs(input, args)
+    case Dataset.Action.Write(mode = WriteMode.Overwrite) => Left(DatasetToSqlError.NotImplemented(
+        "WriteMode.Overwrite can not be expressed in SQL, the runner must delete the path before writing"
+      ))
+    case Dataset.Action.Write(input, path, format, WriteMode.ErrorIfExists) => unparseDs(input, args)
         .flatMap(_.build())
         .map { query =>
           val formatStr = format.toString.toUpperCase
