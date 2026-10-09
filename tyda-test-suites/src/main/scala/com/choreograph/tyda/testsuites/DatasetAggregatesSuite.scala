@@ -389,9 +389,19 @@ trait DatasetAggregatesSuite extends DatasetSuite {
     testSum[Long]
   }
 
-  def testMinMax[T: SimpleTypeName: Arbitrary: Codec: Comparable: Equality]: Unit = {
+  def testMinMax[T: SimpleTypeName: Arbitrary: Codec: Comparable: Equality](using
+      Equality[Option[T]]
+  ): Unit = {
     test[T, T](s"min ${SimpleTypeName.name}", ds => ds.groupByKey(_ => 1).aggregateValue(min).values)
     test[T, T](s"max ${SimpleTypeName.name}", ds => ds.groupByKey(_ => 1).aggregateValue(max).values)
+    test[Option[T], Option[T]](
+      s"min Option[${SimpleTypeName.name}]",
+      ds => ds.groupByKey(_ => 1).aggregateValue(min).values
+    )
+    test[Option[T], Option[T]](
+      s"max Option[${SimpleTypeName.name}]",
+      ds => ds.groupByKey(_ => 1).aggregateValue(max).values
+    )
   }
 
   testMinMax[Boolean]
