@@ -448,6 +448,11 @@ trait ExprEvaluationSuiteBase extends AnyFunSuite {
   )
   testHasSameBehavior[Seq[Int], Boolean]("seq exists", _.exists(_ < 0), _.exists(_ < 0))
   testHasSameBehavior[Seq[Boolean], Boolean]("seq contains", _.contains(true), _.contains(elem = true))
+  testHasSameBehavior[(Boolean, Boolean, Boolean), Boolean](
+    "boolean in sequence of expr",
+    { case Expr(a, b, c) => a.in(b) == c },
+    _ == _ == _
+  )
   testHasSameBehavior[(Seq[Boolean], Boolean, Boolean), Boolean](
     "boolean in expr of sequence",
     { case Expr(a, b, c) => a.contains(b) == c },
