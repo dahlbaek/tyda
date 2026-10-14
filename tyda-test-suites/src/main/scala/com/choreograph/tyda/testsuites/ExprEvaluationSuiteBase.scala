@@ -1528,4 +1528,9 @@ trait ExprEvaluationSuiteBase extends AnyFunSuite {
     _ => range(0, 100).map(_ => true).exists(_ == rand() < 0.5),
     _ => true
   )
+  testHasSameBehavior[EmptyTuple, Boolean](
+    "rand is less rand with contains",
+    _ => range(0, 100).exists(_ => !range(0, 100).map(_ => true).contains(rand() < 0.5)),
+    _ => true
+  )
 }

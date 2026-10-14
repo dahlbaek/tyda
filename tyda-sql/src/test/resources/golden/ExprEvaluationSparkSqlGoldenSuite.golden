@@ -1358,6 +1358,10 @@ SELECT aggregate(transform(CASE WHEN (CAST(100 AS INT) > CAST(0 AS INT)) THEN se
 SELECT array_contains(transform(CASE WHEN (CAST(100 AS INT) > CAST(0 AS INT)) THEN sequence(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT))) ELSE CAST(array() AS ARRAY<INT>) END, c0 -> TRUE), (rand() < CAST(0.5 AS DOUBLE))) AS value FROM t1
 ------ end
 
+------ Test: rand is less rand with contains
+SELECT aggregate(transform(CASE WHEN (CAST(100 AS INT) > CAST(0 AS INT)) THEN sequence(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT))) ELSE CAST(array() AS ARRAY<INT>) END, c0 -> (NOT array_contains(transform(CASE WHEN (CAST(100 AS INT) > CAST(0 AS INT)) THEN sequence(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT))) ELSE CAST(array() AS ARRAY<INT>) END, c1 -> TRUE), (rand() < CAST(0.5 AS DOUBLE))))), FALSE, (c2, c3) -> (c2 OR c3), c4 -> c4) AS value FROM t1
+------ end
+
 ------ Test: rand is rand
 SELECT (NOT (size(array_distinct(transform(CASE WHEN (CAST(100 AS INT) > CAST(0 AS INT)) THEN sequence(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT))) ELSE CAST(array() AS ARRAY<INT>) END, c0 -> rand()))) <= CAST(1 AS INT))) AS value FROM t1
 ------ end

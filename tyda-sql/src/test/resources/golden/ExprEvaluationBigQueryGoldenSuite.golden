@@ -1358,6 +1358,10 @@ SELECT (SELECT coalesce(logical_or(c1), FALSE) FROM unnest(array((SELECT ((NOT i
 SELECT (((NOT is_nan(RAND())) AND (is_nan(CAST(0.5 AS FLOAT64)) OR (RAND() < CAST(0.5 AS FLOAT64)))) IN unnest(array((SELECT TRUE FROM unnest(generate_array(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT)))) AS c0)))) AS value FROM t1
 ------ end
 
+------ Test: rand is less rand with contains
+SELECT (SELECT coalesce(logical_or(c2), FALSE) FROM unnest(array((SELECT (NOT (((NOT is_nan(RAND())) AND (is_nan(CAST(0.5 AS FLOAT64)) OR (RAND() < CAST(0.5 AS FLOAT64)))) IN unnest(array((SELECT TRUE FROM unnest(generate_array(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT)))) AS c1))))) FROM unnest(generate_array(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT)))) AS c0))) AS c2) AS value FROM t1
+------ end
+
 ------ Test: rand is rand
 SELECT (NOT (array_length(array((SELECT DISTINCT c1 FROM unnest(array((SELECT RAND() FROM unnest(generate_array(CAST(0 AS INT), (CAST(100 AS INT) - CAST(1 AS INT)))) AS c0))) AS c1))) <= CAST(1 AS INT))) AS value FROM t1
 ------ end
