@@ -327,6 +327,7 @@ private def exprToSqlExpr[T](fullExpr: ExprNode[T], args: UnparserArgs): Result[
           case SqlDialect.ArrayHigherOrderFunctions.Lambda(filter = filterFunction) =>
             SqlExpr.Function(filterFunction, Seq(arr, SqlExpr.LambdaFunction(arg, predExpr)))
         }
+      case ArrayContains(ExprNode.MakeSeq(Seq(), _), _) => Right(SqlExpr.LiteralBool(false))
       case ArrayContains(ExprNode.MakeSeq(values, _), element) => for {
           valuesExpr <- values.map(inner).sequence
           elemExpr <- inner(element)

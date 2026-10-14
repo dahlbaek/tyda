@@ -699,7 +699,7 @@ SELECT array((SELECT DISTINCT c0 FROM unnest(t1.value) AS c0)) AS value FROM t1
 ------ end
 
 ------ Test: empty sequence contains boolean
-SELECT (t1.value IN ()) AS value FROM t1
+SELECT FALSE AS value FROM t1
 ------ end
 
 ------ Test: endsWith string
@@ -1335,7 +1335,7 @@ SELECT coalesce(CAST(error('My error message') AS STRING), t1.value) AS value FR
 ------ end
 
 ------ Test: raiseError is lazy for empty sequence contains
-SELECT (CAST(error('My error message') AS INT) IN ()) AS value FROM t1
+SELECT FALSE AS value FROM t1
 ------ end
 
 ------ Test: raiseError is lazy for empty sequence expr contains
