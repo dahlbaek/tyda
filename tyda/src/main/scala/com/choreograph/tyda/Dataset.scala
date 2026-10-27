@@ -53,6 +53,7 @@ sealed trait Dataset[T: Codec] {
     *
     * For detailed usage see [[select]].
     */
+  @deprecated(Dataset.multiArgSelectDeprecation, "0.18")
   def select[R1, I1: AsExprOrExplode.Of[R1] as asExpr1, R2, I2: AsExprOrExplode.Of[R2] as asExpr2](
       s1: Expr[T] => I1,
       s2: Expr[T] => I2
@@ -62,6 +63,7 @@ sealed trait Dataset[T: Codec] {
     *
     * For detailed usage see [[select]].
     */
+  @deprecated(Dataset.multiArgSelectDeprecation, "0.18")
   def select[R1, I1: AsExprOrExplode.Of[R1] as asExpr1, R2, I2: AsExprOrExplode.Of[
     R2
   ] as asExpr2, R3, I3: AsExprOrExplode.Of[R3] as asExpr3](
@@ -74,6 +76,7 @@ sealed trait Dataset[T: Codec] {
     *
     * For detailed usage see [[select]].
     */
+  @deprecated(Dataset.multiArgSelectDeprecation, "0.18")
   def select[R1, I1: AsExprOrExplode.Of[R1] as asExpr1, R2, I2: AsExprOrExplode.Of[
     R2
   ] as asExpr2, R3, I3: AsExprOrExplode.Of[R3] as asExpr3, R4, I4: AsExprOrExplode.Of[R4] as asExpr4](
@@ -87,6 +90,7 @@ sealed trait Dataset[T: Codec] {
     *
     * For detailed usage see [[select]].
     */
+  @deprecated(Dataset.multiArgSelectDeprecation, "0.18")
   def select[
       R1,
       I1: AsExprOrExplode.Of[R1] as asExpr1,
@@ -110,6 +114,7 @@ sealed trait Dataset[T: Codec] {
     *
     * For detailed usage see [[select]].
     */
+  @deprecated(Dataset.multiArgSelectDeprecation, "0.18")
   def select[
       R1,
       I1: AsExprOrExplode.Of[R1] as asExpr1,
@@ -136,6 +141,7 @@ sealed trait Dataset[T: Codec] {
     *
     * For detailed usage see [[select]].
     */
+  @deprecated(Dataset.multiArgSelectDeprecation, "0.18")
   def select[
       R1,
       I1: AsExprOrExplode.Of[R1] as asExpr1,
@@ -164,7 +170,7 @@ sealed trait Dataset[T: Codec] {
   /** Apply a function to transform the input into an Iterable, and flatten the
     * result.
     */
-  def explode[E, I: AsExpr.Of[Iterable[E]]](f: Expr[T] => I): Dataset[E] = select(Expr.explode(f))
+  def explode[E, I: AsExpr.Of[Iterable[E]]](f: Expr[T] => I): Dataset[E] = select(x => Expr.explode(f(x)))
 
   /** Projects the Dataset to a subset defined by the target type `To`.
     *
@@ -307,9 +313,9 @@ sealed trait Dataset[T: Codec] {
 
   /** Create a tuple Dataset of the key and the original value.
     *
-    * This is a shorthand for `select(key, identity)`.
+    * This is a shorthand for `select(x => (key(x), x))`.
     */
-  def keyBy[I: AsExpr.Of[K], K](key: Expr[T] => I): Dataset[(K, T)] = select(key, identity)
+  def keyBy[I: AsExpr.Of[K], K](key: Expr[T] => I): Dataset[(K, T)] = select(x => (key(x), x))
 
   /** Groups the Dataset to a [[GroupedDataset]] using the fields of the
     * specified named tuple.
@@ -475,7 +481,7 @@ sealed trait Dataset[T: Codec] {
     * condition.
     */
   def rightOuterJoin[U](other: Dataset[U], p: (Expr[T], Expr[U]) => Expr[Boolean]): Dataset[(Option[T], U)] =
-    other.leftOuterJoin(this, (l, r) => p(r, l)).select(_._2, _._1)
+    other.leftOuterJoin(this, (l, r) => p(r, l)).select(x => (x._2, x._1))
 
   /** Perform a full outer join with another [[Dataset]] using the given join
     * condition.
@@ -554,6 +560,11 @@ sealed trait Dataset[T: Codec] {
 }
 
 object Dataset {
+  private[tyda] final val multiArgSelectDeprecation =
+    "Use a single select returning a tuple instead, e.g. for ds: Dataset[(a: Int, bs: Seq[Long])] replace " +
+      "ds.select(_.a, explode(_.bs)) with ds.select(x => (x.a, explode(x.bs))), or with " +
+      "ds.select(x => (a = x.a, b = explode(x.bs))) to name the fields"
+
   sealed trait Action
   private[tyda] object Action {
     final case class Write[T](input: Dataset[T], path: String, format: Format) extends Action
@@ -715,7 +726,7 @@ object Dataset {
   extension [K, V](ds: Dataset[(key: K, value: V)]) {
 
     /** Added for backwards compatablity and calls should likely be removed. */
-    def pairs: Dataset[(K, V)] = ds.select(_.key, _.value)
+    def pairs: Dataset[(K, V)] = ds.select(x => (x.key, x.value))
 
     /** Return a Dataset of only the keys. */
     def keys: Dataset[K] = ds.select(_.key)
@@ -740,7 +751,7 @@ object Dataset {
 
     /** Select a new value while keeping the key the same */
     def selectValues[U, I: AsExprOrExplode.Of[U]](f: Expr[V] => I): Dataset[(K, U)] =
-      ds.select(_._1, v => f(v._2))
+      ds.select(v => (v._1, f(v._2)))
 
     /** Create a new [[Dataset]] by applying the provided function to each
       * value.
@@ -763,12 +774,12 @@ object Dataset {
 
     /** Perform an inner equi-join on the key with another GroupedDataset. */
     def join[U](rhs: Dataset[(K, U)]): Dataset[(K, (V, U))] =
-      ds.join(rhs, _._1 == _._1).select(_._1._1, v => (v._1._2, v._2._2))
+      ds.join(rhs, _._1 == _._1).select(v => (v._1._1, (v._1._2, v._2._2)))
 
     /** Perform a left outer equi-join on the key with another GroupedDataset.
       */
     def leftOuterJoin[U](rhs: Dataset[(K, U)]): Dataset[(K, (V, Option[U]))] =
-      ds.leftOuterJoin(rhs, _._1 == _._1).select(_._1._1, v => (v._1._2, v._2.map(_._2)))
+      ds.leftOuterJoin(rhs, _._1 == _._1).select(v => (v._1._1, (v._1._2, v._2.map(_._2))))
 
     /** Perform a left anti equi-join on the key with another GroupedDataset.
       * Returns values from the left Dataset whose keys have no match in the
@@ -782,15 +793,14 @@ object Dataset {
     /** Perform a right outer equi-join on the key with another GroupedDataset.
       */
     def rightOuterJoin[U](rhs: Dataset[(K, U)]): Dataset[(K, (Option[V], U))] =
-      ds.rightOuterJoin(rhs, _._1 == _._1).select(_._2._1, v => (v._1.map(_._2), v._2._2))
+      ds.rightOuterJoin(rhs, _._1 == _._1).select(v => (v._2._1, (v._1.map(_._2), v._2._2)))
 
     /** Perform a full outer equi-join on the key with another GroupedDataset.
       */
     def fullOuterJoin[U](rhs: Dataset[(K, U)]): Dataset[(K, (Option[V], Option[U]))] =
       ds.fullOuterJoin(rhs, _._1 == _._1)
-        .select(
-          v => knownNotNull(coalesce(v._1.map(_._1), v._2.map(_._1))),
-          v => (v._1.map(_._2), v._2.map(_._2))
+        .select(v =>
+          (knownNotNull(coalesce(v._1.map(_._1), v._2.map(_._1))), (v._1.map(_._2), v._2.map(_._2)))
         )
 
   }
@@ -808,7 +818,7 @@ object Dataset {
       * val ds2: Dataset[(externalId: Int, value: Double)] = Dataset.from(Seq((1, 10.0), (3, 30.0)))
       * val joined: Dataset[(String, Double)] = ds1
       *   .joinFlat(ds2, (e1, e2) => e1.id == e2.externalId)
-      *   .select(_.name, _.value)
+      *   .select(x => (x.name, x.value))
       * // result: Seq(("a", 10.0))
       * ```
       */
@@ -834,7 +844,7 @@ object Dataset {
       * val ds2: Dataset[(externalId: Int, value: Double)] = Dataset.from(Seq((1, 10.0), (3, 30.0)))
       * val joined: Dataset[(String, Option[Double])] = ds1
       *   .leftJoinFlat(ds2, (e1, e2) => e1.id == e2.externalId)
-      *   .select(_.name, _.value)
+      *   .select(x => (x.name, x.value))
       * // result: Seq(("a", Some(10.0)), ("b", None))
       * ```
       */
@@ -862,7 +872,7 @@ object Dataset {
       * val ds2: Dataset[(externalId: Int, value: Double)] = Dataset.from(Seq((1, 10.0), (3, 30.0)))
       * val joined: Dataset[(Option[String], Double)] = ds1
       *   .rightJoinFlat(ds2, (e1, e2) => e1.id == e2.externalId)
-      *   .select(_.name, _.value)
+      *   .select(x => (x.name, x.value))
       * // result: Seq((Some("a"), 10.0), (None, 30.0))
       * ```
       */
@@ -890,7 +900,7 @@ object Dataset {
       * val ds2: Dataset[(externalId: Int, value: Double)] = Dataset.from(Seq((1, 10.0), (3, 30.0)))
       * val joined: Dataset[(Option[String], Option[Double])] = ds1
       *   .fullJoinFlat(ds2, (e1, e2) => e1.id == e2.externalId)
-      *   .select(_.name, _.value)
+      *   .select(x => (x.name, x.value))
       * // result: Seq((Some("a"), Some(10.0)), (Some("b"), None), (None, Some(30.0)))
       * ```
       */

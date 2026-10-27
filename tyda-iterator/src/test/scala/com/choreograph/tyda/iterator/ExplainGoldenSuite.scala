@@ -24,7 +24,7 @@ class ExplainGoldenSuite extends GoldenTestSuite {
   goldenTest("read+select+filter+join") {
     val rightPath = "/tmp/right"
     val right = Dataset.read[(Int, Int)](rightPath, Format.Parquet, false, "*")
-    val ds = root.select(identity, _ == 1).join(right.where(_._2 < 1), (l, r) => l._1 == r._1)
+    val ds = root.select(x => (x, x == 1)).join(right.where(_._2 < 1), (l, r) => l._1 == r._1)
     explain(ds)
   }
 

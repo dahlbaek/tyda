@@ -29,7 +29,7 @@ class DatasetSpec extends AnyFunSuite {
 
   test("support select") {
     val ds: Dataset[(Int, Int)] = Dataset.from(Seq((1, 1)))
-    ds.select(_._1, _._2)
+    ds.select(x => (x._1, x._2))
   }
 
   test("support Expr extractor in select") {

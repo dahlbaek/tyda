@@ -1,5 +1,7 @@
 package com.choreograph.tyda.testsuites
 
+import scala.annotation.nowarn
+
 import com.choreograph.tyda.Arbitrary
 import com.choreograph.tyda.Codec
 import com.choreograph.tyda.Dataset
@@ -40,7 +42,7 @@ trait DatasetBasicSuite extends DatasetSuite {
   test[Seq[SimpleProduct], Int]("select after explode to product", _.select(explode).select(_.a))
   test[(Tuple1[Int], Seq[SimpleProduct]), Int](
     "select different after explode to product",
-    _.select(_._1, explode(_._2)).select(_._1._1)
+    _.select(x => (x._1, explode(x._2))).select(_._1._1)
   )
   test[Seq[SimpleEnum], SimpleEnum]("explode to simple enum", _.select(explode))
   test[Seq[MyEnum], MyEnum]("explode to complex enum", _.select(explode))
@@ -54,11 +56,11 @@ trait DatasetBasicSuite extends DatasetSuite {
     _.select(x => (int = explode(x.seq), seq = x.seq))
   )
   test[(Seq[Int], Seq[Int]), (Int, Int)](
-    "select multiple explode seq",
-    _.select(explode(_._1), explode(_._2))
+    "select multiple explode seq legacy syntax",
+    _.select(explode(_._1), explode(_._2)): @nowarn("cat=deprecation")
   )
   test[(Seq[Int], Seq[Int]), (Int, Int)](
-    "select multiple explode seq single select syntax",
+    "select multiple explode seq",
     _.select(x => (explode(x._1), explode(x._2)))
   )
   test[(Seq[Int], Seq[Int]), (first: Int, second: Int)](
@@ -75,7 +77,7 @@ trait DatasetBasicSuite extends DatasetSuite {
   )
   test[(Option[Int], Option[Int]), (Int, Int)](
     "select multiple explode options",
-    _.select(explode(_._1), explode(_._2))
+    _.select(x => (explode(x._1), explode(x._2)))
   )
   test[Seq[Int], Int]("explode Seq", _.explode(identity))
   test[Seq[Seq[Int]], Int]("explode nested Seq", _.select(explode).select(explode))
@@ -85,23 +87,29 @@ trait DatasetBasicSuite extends DatasetSuite {
   )
   test[(Seq[Seq[Int]], Seq[Seq[Int]]), (Seq[Int], Seq[Int])](
     "explode multiple nested Seq",
-    _.select(explode(_._1), explode(_._2))
+    _.select(x => (explode(x._1), explode(x._2)))
   )
   test[Map[Int, Int], (Int, Int)]("explode Map", _.select(explode))
-  test[(Map[Int, Int], Int), ((Int, Int), Int)]("explode Map and select Int", _.select(explode(_._1), _._2))
+  test[(Map[Int, Int], Int), ((Int, Int), Int)](
+    "explode Map and select Int",
+    _.select(x => (explode(x._1), x._2))
+  )
   test[Option[Int], Int]("explode Option", _.select(explode))
   test[Option[Option[Int]], Iterable[Option[Int]]]("nested option upcast", _.select(v => v))
 
   test[Int, Int]("mapPartitions", _.mapPartitions(_.map(_ + 1)))
 
-  test[WideTuple, (Int, Int)]("select 2", _.select(_._1, _._2))
-  test[WideTuple, (Int, Int, Int)]("select 3", _.select(_._1, _._2, _._3))
-  test[WideTuple, (Int, Int, Int, Int)]("select 4", _.select(_._1, _._2, _._3, _._4))
-  test[WideTuple, (Int, Int, Int, Int, Int)]("select 5", _.select(_._1, _._2, _._3, _._4, _._5))
-  test[WideTuple, (Int, Int, Int, Int, Int, Int)]("select 6", _.select(_._1, _._2, _._3, _._4, _._5, _._6))
+  test[WideTuple, (Int, Int)]("select 2", _.select(x => (x._1, x._2)))
+  test[WideTuple, (Int, Int, Int)]("select 3", _.select(x => (x._1, x._2, x._3)))
+  test[WideTuple, (Int, Int, Int, Int)]("select 4", _.select(x => (x._1, x._2, x._3, x._4)))
+  test[WideTuple, (Int, Int, Int, Int, Int)]("select 5", _.select(x => (x._1, x._2, x._3, x._4, x._5)))
+  test[WideTuple, (Int, Int, Int, Int, Int, Int)](
+    "select 6",
+    _.select(x => (x._1, x._2, x._3, x._4, x._5, x._6))
+  )
   test[WideTuple, (Int, Int, Int, Int, Int, Int, Int)](
     "select 7",
-    _.select(_._1, _._2, _._3, _._4, _._5, _._6, _._7)
+    _.select(x => (x._1, x._2, x._3, x._4, x._5, x._6, x._7))
   )
   test[NamedTuple.From[SimpleProduct], SimpleProduct]("as", _.as)
   // First arg here should be Tuple.Map[WideTuple, Seq] but runs into
@@ -111,14 +119,16 @@ trait DatasetBasicSuite extends DatasetSuite {
     (Int, Int, Int, Int, Int, Int, Int)
   ](
     "select 7 explode",
-    _.select(
-      explode(_._1),
-      explode(_._2),
-      explode(_._3),
-      explode(_._4),
-      explode(_._5),
-      explode(_._6),
-      explode(_._7)
+    _.select(x =>
+      (
+        explode(x._1),
+        explode(x._2),
+        explode(x._3),
+        explode(x._4),
+        explode(x._5),
+        explode(x._6),
+        explode(x._7)
+      )
     )
   )
 
@@ -147,15 +157,15 @@ trait DatasetBasicSuite extends DatasetSuite {
   test[(Int, Int), (Int, Int)]("limit after select", _.select(x => (x._1, x._2)).limit(3))
   test[Int, Int]("limit before filter", _.limit(5).where(_ > 2))
   test[Int, Int]("limit after filter", _.where(_ > 5).limit(3))
-  test[(String, Seq[Int]), Int]("limit before explode", _.limit(5).select(explode(_._2)))
-  test[(String, Seq[Int]), Int]("limit after explode", _.select(explode(_._2)).limit(5))
+  test[(String, Seq[Int]), Int]("limit before explode", _.limit(5).select(x => explode(x._2)))
+  test[(String, Seq[Int]), Int]("limit after explode", _.select(x => explode(x._2)).limit(5))
   test[(String, Seq[Int]), (Int, Int, String)](
     "where before explode",
-    _.where(_._2.size < 2).select(explode(_._2), explode(_._2), _._1)
+    _.where(_._2.size < 2).select(x => (explode(x._2), explode(x._2), x._1))
   )
   test[(String, Seq[Int]), (Int, Int, String)](
     "where after explode",
-    _.select(explode(_._2), explode(_._2), _._1).where(_._1 < 0)
+    _.select(x => (explode(x._2), explode(x._2), x._1)).where(_._1 < 0)
   )
   test[(String, Int), (key: String, value: Long)](
     "limit before aggregate",
@@ -169,7 +179,7 @@ trait DatasetBasicSuite extends DatasetSuite {
   test[Int, Int, (Int, Int)]("limit after join", (left, right) => left.join(right, _ == _).limit(5))
   test[M1, (Long, Long)](
     "multiple explodes in separate selects",
-    ds => ds.select(identity, explode(_.d)).select(_._2, explode(_._1.d))
+    ds => ds.select(x => (x, explode(x.d))).select(x => (x._2, explode(x._1.d)))
   )
   test[EmptyTuple, TestEnum](
     "creation of enums",
