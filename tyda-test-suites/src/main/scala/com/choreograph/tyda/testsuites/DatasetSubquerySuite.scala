@@ -22,7 +22,7 @@ trait DatasetSubquerySuite extends DatasetSuite {
 
   test[Seq[Long], Seq[Long], (Long, Long)](
     "explode subquery",
-    (ds1, ds2) => ds1.select(explode, _ => ds2.select(explode).count)
+    (ds1, ds2) => ds1.select(x => (explode(x), ds2.select(explode).count))
   )
 
   test[Seq[Long], Option[Long], (Long, Long)](
